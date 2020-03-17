@@ -1,0 +1,15 @@
+{
+  "name": "knotted-portal",
+  "collaborators": [
+    "finegeometer <finegeometer@gmail.com>"
+  ],
+  "version": "0.1.0",
+  "files": [
+    "knotted_portal_bg.wasm",
+    "knotted_portal.js",
+    "knotted_portal.d.ts"
+  ],
+  "module": "knotted_portal.js",
+  "types": "knotted_portal.d.ts",
+  "sideEffects": "false"
+}

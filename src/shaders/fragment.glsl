@@ -6,12 +6,5 @@ void main() {
 
 	color = v_colors[world];
 
-	// Not currently needed
-	// if color.a < 0.5 {
-	// 	discard;
-	// }
-
-	color *= v_ambient_factor + v_diffuse_factor * max(dot(v_normal, light_dir), 0.0);
-
-	color = vec4(color.xyz, 1.0);
+	color.rgb *= v_ambient_factor + v_diffuse_factor * max(dot(v_normal, light_dir), 0.0);
 }

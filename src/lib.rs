@@ -44,6 +44,7 @@ struct Model {
     canvas: web_sys::HtmlCanvasElement,
 
     player: Player,
+    balls: Vec<Ball>,
 }
 
 impl State {
@@ -116,6 +117,7 @@ impl State {
             let dt = fps.frame(timestamp);
 
             model.move_player(dt as f32);
+            model.move_balls(dt as f32);
             model.view();
         } else {
             model.fps = Some(<fps::FrameCounter>::new(timestamp));
@@ -171,6 +173,17 @@ impl Model {
             .chain(modeling::skybox())
             .chain(modeling::ground());
 
+        let balls = vec![
+            Ball::new([0.8, 0.8, 0.8, 1.0], 0, |t| {
+                let (s, c) = t.sin_cos();
+                nalgebra::Vector3::new(2. * s, -2. * c, 0.)
+            }),
+            Ball::new([0.8, 0.6, 0.2, 1.0], 3, |t| {
+                let (s, c) = t.sin_cos();
+                nalgebra::Vector3::new(0.1, -3. + c, s)
+            }),
+        ];
+
         Self {
             animation_frame_closure: JsValue::undefined().into(),
             fps: None,
@@ -182,6 +195,8 @@ impl Model {
             window,
             document,
             canvas,
+
+            balls,
         }
     }
 
@@ -212,12 +227,21 @@ impl Model {
         self.player.travel(v);
     }
 
+    fn move_balls(&mut self, dt: f32) {
+        for ball in self.balls.iter_mut() {
+            ball.travel(dt);
+        }
+    }
+
     fn view(&self) {
-        self.renderer.render(render::Uniforms {
-            light_dir: nalgebra::Vector3::new(1.0, 1.0, 1.0).normalize(),
-            player_isometry: self.player.isometry(),
-            player_world: self.player.world,
-        })
+        self.renderer.render(
+            render::Uniforms {
+                light_dir: nalgebra::Vector3::new(1.0, 1.0, 1.0).normalize(),
+                player_isometry: self.player.isometry(),
+                player_world: self.player.world,
+            },
+            self.balls.iter().flat_map(Ball::geometry).collect(),
+        )
     }
 }
 
@@ -256,5 +280,37 @@ impl Player {
         let newpos = self.pos + v;
         portal::travel(&mut self.world, self.pos, newpos);
         self.pos = newpos;
+    }
+}
+
+struct Ball {
+    color: [f32; 4],
+    path: fn(f32) -> nalgebra::Vector3<f32>,
+    pos: nalgebra::Vector3<f32>,
+    t: f32,
+    world: i32,
+}
+
+impl Ball {
+    fn new(color: [f32; 4], world: i32, path: fn(f32) -> nalgebra::Vector3<f32>) -> Self {
+        Self {
+            color,
+            path,
+            t: 0.,
+            pos: path(0.),
+            world,
+        }
+    }
+
+    fn travel(&mut self, dt: f32) {
+        let t = self.t + dt;
+        let pos = (self.path)(t);
+        portal::travel(&mut self.world, self.pos, pos);
+        self.t = t;
+        self.pos = pos;
+    }
+
+    fn geometry(&self) -> impl IntoIterator<Item = modeling::Triangle> {
+        modeling::ball((self.path)(self.t), self.world, self.color)
     }
 }

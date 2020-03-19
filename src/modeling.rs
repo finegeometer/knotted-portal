@@ -1,9 +1,22 @@
 pub struct Triangle {
     pub vertices: [nalgebra::Vector3<f32>; 3],
-    pub colors: [Option<[f32; 3]>; 6],
+    pub center: Option<nalgebra::Vector3<f32>>,
+
+    pub colors: [[f32; 4]; 6],
 
     pub ambient_factor: f32,
     pub diffuse_factor: f32,
+}
+
+impl Triangle {
+    pub fn center(&self) -> nalgebra::Vector3<f32> {
+        if let Some(center) = self.center {
+            center
+        } else {
+            let [v1, v2, v3] = self.vertices;
+            (v1 + v2 + v3) / 3.0
+        }
+    }
 }
 
 mod trefoil {
@@ -47,9 +60,9 @@ pub fn trefoil() -> impl Iterator<Item = Triangle> {
     };
 
     (0..96).flat_map(move |a| {
-        const R: Option<[f32; 3]> = Some([1.0, 0.0, 0.0]);
-        const G: Option<[f32; 3]> = Some([0.0, 1.0, 0.0]);
-        const B: Option<[f32; 3]> = Some([0.0, 0.0, 1.0]);
+        const R: [f32; 4] = [1.0, 0.0, 0.0, 1.0];
+        const G: [f32; 4] = [0.0, 1.0, 0.0, 1.0];
+        const B: [f32; 4] = [0.0, 0.0, 1.0, 1.0];
 
         let colors = match a {
             28..=59 => [B, G, G, B, R, R], // Arc C
@@ -65,12 +78,14 @@ pub fn trefoil() -> impl Iterator<Item = Triangle> {
 
             let t0 = Triangle {
                 vertices: [v0, v1, v2],
+                center: None,
                 colors,
                 ambient_factor,
                 diffuse_factor,
             };
             let t1 = Triangle {
                 vertices: [v3, v2, v1],
+                center: None,
                 colors,
                 ambient_factor,
                 diffuse_factor,
@@ -83,12 +98,12 @@ pub fn trefoil() -> impl Iterator<Item = Triangle> {
 
 pub fn skybox() -> impl IntoIterator<Item = Triangle> {
     let colors = [
-        Some([0.2, 0.7, 1.0]),
-        Some([0.2, 1.0, 0.7]),
-        Some([0.7, 1.0, 0.2]),
-        Some([0.7, 0.2, 1.0]),
-        Some([1.0, 0.2, 0.7]),
-        Some([1.0, 0.7, 0.2]),
+        [0.2, 0.7, 1.0, 1.0],
+        [0.2, 1.0, 0.7, 1.0],
+        [0.7, 1.0, 0.2, 1.0],
+        [0.7, 0.2, 1.0, 1.0],
+        [1.0, 0.2, 0.7, 1.0],
+        [1.0, 0.7, 0.2, 1.0],
     ];
 
     let ambient_factor = 1.0;
@@ -101,24 +116,28 @@ pub fn skybox() -> impl IntoIterator<Item = Triangle> {
     vec![
         Triangle {
             vertices: [v2, v1, v0],
+            center: None,
             colors,
             ambient_factor,
             diffuse_factor,
         },
         Triangle {
             vertices: [v0, v1, v3],
+            center: None,
             colors,
             ambient_factor,
             diffuse_factor,
         },
         Triangle {
             vertices: [v3, v2, v0],
+            center: None,
             colors,
             ambient_factor,
             diffuse_factor,
         },
         Triangle {
             vertices: [v1, v2, v3],
+            center: None,
             colors,
             ambient_factor,
             diffuse_factor,
@@ -127,7 +146,7 @@ pub fn skybox() -> impl IntoIterator<Item = Triangle> {
 }
 
 pub fn ground() -> impl IntoIterator<Item = Triangle> {
-    const GRAY: Option<[f32; 3]> = Some([0.5, 0.5, 0.5]);
+    const GRAY: [f32; 4] = [0.5, 0.5, 0.5, 1.0];
     let colors = [GRAY; 6];
 
     let ambient_factor = 0.2;
@@ -140,15 +159,72 @@ pub fn ground() -> impl IntoIterator<Item = Triangle> {
     vec![
         Triangle {
             vertices: [v0, v1, v2],
+            center: None,
             colors,
             ambient_factor,
             diffuse_factor,
         },
         Triangle {
             vertices: [v2, v3, v0],
+            center: None,
             colors,
             ambient_factor,
             diffuse_factor,
         },
     ]
+}
+
+pub fn ball(
+    center: nalgebra::Vector3<f32>,
+    world: i32,
+    color: [f32; 4],
+) -> impl Iterator<Item = Triangle> {
+    let mut colors = [[0.0; 4]; 6];
+    colors[world as usize] = color;
+
+    const PHI: f32 = 1.618_034;
+
+    let ur = center + 0.1 * nalgebra::Vector3::new(1.0, 0.0, PHI);
+    let dr = center + 0.1 * nalgebra::Vector3::new(1.0, 0.0, -PHI);
+    let ul = center + 0.1 * nalgebra::Vector3::new(-1.0, 0.0, PHI);
+    let dl = center + 0.1 * nalgebra::Vector3::new(-1.0, 0.0, -PHI);
+    let rf = center + 0.1 * nalgebra::Vector3::new(PHI, 1.0, 0.0);
+    let lf = center + 0.1 * nalgebra::Vector3::new(-PHI, 1.0, 0.0);
+    let rb = center + 0.1 * nalgebra::Vector3::new(PHI, -1.0, 0.0);
+    let lb = center + 0.1 * nalgebra::Vector3::new(-PHI, -1.0, 0.0);
+    let fu = center + 0.1 * nalgebra::Vector3::new(0.0, PHI, 1.0);
+    let bu = center + 0.1 * nalgebra::Vector3::new(0.0, -PHI, 1.0);
+    let fd = center + 0.1 * nalgebra::Vector3::new(0.0, PHI, -1.0);
+    let bd = center + 0.1 * nalgebra::Vector3::new(0.0, -PHI, -1.0);
+
+    vec![
+        [ul, ur, fu],
+        [ur, ul, bu],
+        [dl, dr, bd],
+        [dr, dl, fd],
+        [rb, rf, ur],
+        [rf, rb, dr],
+        [lb, lf, dl],
+        [lf, lb, ul],
+        [fd, fu, rf],
+        [fu, fd, lf],
+        [bd, bu, lb],
+        [bu, bd, rb],
+        [fu, lf, ul],
+        [fu, ur, rf],
+        [fd, dl, lf],
+        [fd, rf, dr],
+        [bu, ul, lb],
+        [bu, rb, ur],
+        [bd, lb, dl],
+        [bd, dr, rb],
+    ]
+    .into_iter()
+    .map(move |vertices| Triangle {
+        vertices,
+        center: Some(center),
+        colors,
+        ambient_factor: 0.2,
+        diffuse_factor: 0.8,
+    })
 }

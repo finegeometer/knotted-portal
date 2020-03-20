@@ -174,13 +174,18 @@ impl Model {
             .chain(modeling::ground());
 
         let balls = vec![
-            Ball::new([0.8, 0.8, 0.8, 1.0], 0, |t| {
+            Ball::new([0.6, 0.6, 0.8, 1.0], 0, |t| {
                 let (s, c) = t.sin_cos();
                 nalgebra::Vector3::new(2. * s, -2. * c, 0.)
             }),
             Ball::new([0.8, 0.6, 0.2, 1.0], 3, |t| {
                 let (s, c) = t.sin_cos();
                 nalgebra::Vector3::new(0.1, -3. + c, s)
+            }),
+            Ball::new([0.2, 0.3, 0.9, 1.0], 3, |t| {
+                let (s, c) = t.sin_cos();
+                let (s2, c2) = (2. * t).sin_cos();
+                nalgebra::Vector3::new(s + 2. * s2, c - 2. * c2 + 0.1, (3. * t).sin() + 0.5)
             }),
         ];
 

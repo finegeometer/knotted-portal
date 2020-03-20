@@ -13,6 +13,10 @@ Move mouse to rotate.
 
 Coded in Rust, compiled to WASM.
 
+# Known Issue
+
+The portal is not 100% reliable; every so often a ball glitches into the wrong world.
+
 # License
 
 Licensed under either of
